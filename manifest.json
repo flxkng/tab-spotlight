@@ -5,7 +5,8 @@
   "description": "Spotlight-style tab switcher for Chrome/Edge",
   "permissions": [
     "tabs",
-    "commands"
+    "commands",
+    "storage"
   ],
   "background": {
     "service_worker": "background.js"
@@ -17,6 +18,7 @@
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+    
   }
 },
 "icons": {
