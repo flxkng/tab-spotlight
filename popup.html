@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <style>
     body {
       width: 400px;
@@ -8,6 +9,8 @@
       color: #fff;
       padding: 10px;
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      box-sizing: border-box;
     }
     #searchInput {
       width: 100%;
@@ -30,23 +33,215 @@
       background: #2a2a2a;
     }
     .tab-item[data-action="search"] {
-      border-bottom: 1px solid #333;
-      margin-bottom: 8px;
-      padding-bottom: 12px;
+      margin-bottom: 4px;
     }
     .tab-icon {
       width: 16px;
       height: 16px;
       margin-right: 8px;
+      flex-shrink: 0;
     }
     .hidden {
       display: none;
     }
+    .search-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    #settingsBtn {
+      background: none;
+      border: none;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.8;
+    }
+    #settingsBtn:hover {
+      opacity: 1;
+    }
+    .gear-icon {
+      width: 20px;
+      height: 20px;
+      filter: invert(70%);
+    }
+    #settingsBtn:hover .gear-icon {
+      filter: invert(100%);
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 10;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .modal-content {
+      background: #2a2a2a;
+      padding: 15px;
+      border-radius: 5px;
+      max-height: 400px;
+      overflow-y: auto;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .close-btn {
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 10px;
+    }
+    .icon-close {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      position: relative;
+    }
+    .icon-close:before, .icon-close:after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background-color: #aaa;
+      top: 50%;
+      left: 0;
+    }
+    .icon-close:before {
+      transform: rotate(45deg);
+    }
+    .icon-close:after {
+      transform: rotate(-45deg);
+    }
+    .icon-close:hover:before, .icon-close:hover:after {
+      background-color: #ff6b6b;
+    }
+    .search-engine-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #3a3a3a;
+    }
+    .engine-info {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      margin-right: 8px;
+      flex: 1;
+    }
+    .engine-name-container {
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .engine-url {
+      color: #aaa;
+      font-size: 0.9em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+      padding-left: 24px; /* Space for alignment with icon */
+    }
+    .search-engine-form {
+      margin-top: 15px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .search-engine-form input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      background: #1a1a1a;
+      border: none;
+      color: #fff;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .search-engine-form button {
+      padding: 8px 12px;
+      background: #4a4a4a;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .delete-engine {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      flex-shrink: 0;
+    }
+    .search-divider {
+      font-size: 0.8em;
+      color: #999;
+      margin-top: 4px;
+      margin-bottom: 4px;
+      padding-left: 8px;
+    }
+    .separator {
+      height: 1px;
+      background-color: #333;
+      margin: 8px 0;
+    }
   </style>
 </head>
 <body>
-  <input type="text" id="searchInput" placeholder="Search tabs...">
+  <div class="search-header">
+    <input type="text" id="searchInput" placeholder="Search tabs...">
+    <button id="settingsBtn" title="Search Engine Settings">
+      <img src="icons/gear-icon.svg" class="gear-icon" alt="Settings">
+    </button>
+  </div>
   <div id="tabList"></div>
+  
+  <!-- Search Engine Settings Modal -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Search Engine Settings</h3>
+        <button class="close-btn" id="closeModalBtn"><span class="icon-close"></span></button>
+      </div>
+      <div id="searchEnginesList"></div>
+      <div class="search-engine-form">
+        <h4>Add New Search Engine</h4>
+        <input type="text" id="engineName" placeholder="Name (e.g. Google, DuckDuckGo)" required>
+        <input type="text" id="engineIcon" placeholder="Icon URL (optional)">
+        <input type="text" id="engineUrl" placeholder="URL with {query} (e.g. https://google.com/search?q={query})" required>
+        <button id="addEngineBtn">Add Search Engine</button>
+      </div>
+    </div>
+  </div>
+  
   <script src="popup.js"></script>
 </body>
 </html>

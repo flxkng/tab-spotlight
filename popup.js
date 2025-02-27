@@ -1,9 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.getElementById('searchInput');
   const tabList = document.getElementById('tabList');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsModal = document.getElementById('settingsModal');
+  const closeModalBtn = document.getElementById('closeModalBtn');
+  const searchEnginesList = document.getElementById('searchEnginesList');
+  const addEngineBtn = document.getElementById('addEngineBtn');
+  
   let allTabs = [];
   let selectedIndex = -1;
   let hasSearchOption = false;
+  let searchEngines = [];
+  let defaultSearchEngine = {
+    name: 'Google',
+    icon: 'https://www.google.com/favicon.ico',
+    url: 'https://www.google.com/search?q={query}'
+  };
+
+  // Load search engines from storage
+  loadSearchEngines();
 
   // Focus search input when popup opens
   searchInput.focus();
@@ -49,48 +64,117 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedIndex >= 0 && selectedIndex < visibleTabs.length) {
           const element = visibleTabs[selectedIndex];
           if (element.dataset.action === 'search') {
-            googleSearch(searchInput.value);
+            const engineId = element.dataset.engineId;
+            searchWithEngine(searchInput.value, engineId);
           } else {
             const tabId = parseInt(element.dataset.tabId);
             switchToTab(tabId);
           }
         } else if (searchInput.value.trim() !== '') {
-          // If nothing is selected but we have a query, search Google
-          googleSearch(searchInput.value);
+          // If nothing is selected but we have a query, search with default engine
+          searchWithEngine(searchInput.value);
         }
         break;
       case 'Escape':
-        window.close();
+        if (settingsModal.style.display === 'block') {
+          settingsModal.style.display = 'none';
+        } else {
+          window.close();
+        }
         break;
+    }
+  });
+
+  // Settings button click handler
+  settingsBtn.addEventListener('click', () => {
+    settingsModal.style.display = 'block';
+    renderSearchEnginesList();
+  });
+
+  // Close modal button click handler
+  closeModalBtn.addEventListener('click', () => {
+    settingsModal.style.display = 'none';
+    searchInput.focus();
+  });
+
+  // Add search engine button click handler
+  addEngineBtn.addEventListener('click', () => {
+    const name = document.getElementById('engineName').value.trim();
+    const icon = document.getElementById('engineIcon').value.trim() || 'default-icon.png';
+    const url = document.getElementById('engineUrl').value.trim();
+
+    if (name && url && url.includes('{query}')) {
+      addSearchEngine(name, icon, url);
+      renderSearchEnginesList();
+      
+      // Clear form
+      document.getElementById('engineName').value = '';
+      document.getElementById('engineIcon').value = '';
+      document.getElementById('engineUrl').value = '';
+    } else {
+      alert('Please enter a valid name and URL that includes {query} placeholder');
     }
   });
 
   function renderTabs(tabs, query = '') {
     tabList.innerHTML = '';
     
-    // If we have a query but no matching tabs, or very few matching tabs, add search option
-    hasSearchOption = query !== '' && (tabs.length < 5);
+    // If we have a query but no matching tabs, add search options
+    hasSearchOption = query !== '';
     
     if (hasSearchOption) {
-      const searchElement = document.createElement('div');
-      searchElement.className = 'tab-item';
-      searchElement.dataset.action = 'search';
-      searchElement.innerHTML = `
-        <img class="tab-icon" src="https://www.google.com/favicon.ico" />
-        <span>Search Google for "${query}"</span>
-      `;
-      searchElement.addEventListener('click', () => googleSearch(query));
-      tabList.appendChild(searchElement);
+      // Add a divider before search options
+      const divider = document.createElement('div');
+      divider.className = 'search-divider';
+      divider.textContent = 'Search with:';
+      tabList.appendChild(divider);
+      
+      // Add search options for each search engine
+      searchEngines.forEach((engine, index) => {
+        const searchElement = document.createElement('div');
+        searchElement.className = 'tab-item';
+        searchElement.dataset.action = 'search';
+        searchElement.dataset.engineId = index;
+        
+        // Create elements instead of using innerHTML to avoid potential rendering issues
+        const iconImg = document.createElement('img');
+        iconImg.className = 'tab-icon';
+        iconImg.src = engine.icon;
+        iconImg.onerror = () => { iconImg.src = 'default-icon.png'; }; // Fallback for failed icon loads
+        
+        const textSpan = document.createElement('span');
+        textSpan.textContent = `${engine.name} "${query}"`;
+        
+        searchElement.appendChild(iconImg);
+        searchElement.appendChild(textSpan);
+        searchElement.addEventListener('click', () => searchWithEngine(query, index));
+        tabList.appendChild(searchElement);
+      });
+      
+      // Add a separator after search options if we have tabs
+      if (tabs.length > 0) {
+        const separator = document.createElement('div');
+        separator.className = 'separator';
+        tabList.appendChild(separator);
+      }
     }
     
     tabs.forEach((tab) => {
       const tabElement = document.createElement('div');
       tabElement.className = 'tab-item';
       tabElement.dataset.tabId = tab.id;
-      tabElement.innerHTML = `
-        <img class="tab-icon" src="${tab.favIconUrl || 'default-icon.png'}" />
-        <span>${tab.title}</span>
-      `;
+      
+      // Create elements instead of using innerHTML
+      const iconImg = document.createElement('img');
+      iconImg.className = 'tab-icon';
+      iconImg.src = tab.favIconUrl || 'default-icon.png';
+      iconImg.onerror = () => { iconImg.src = 'default-icon.png'; }; // Fallback for failed icon loads
+      
+      const textSpan = document.createElement('span');
+      textSpan.textContent = tab.title;
+      
+      tabElement.appendChild(iconImg);
+      tabElement.appendChild(textSpan);
       tabElement.addEventListener('click', () => switchToTab(tab.id));
       tabList.appendChild(tabElement);
     });
@@ -115,10 +199,104 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  function googleSearch(query) {
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+  function searchWithEngine(query, engineId = 0) {
+    const engine = searchEngines[engineId] || defaultSearchEngine;
+    const searchUrl = engine.url.replace('{query}', encodeURIComponent(query));
     chrome.tabs.create({ url: searchUrl }, () => {
       window.close();
+    });
+  }
+
+  function loadSearchEngines() {
+    chrome.storage.sync.get('searchEngines', (data) => {
+      if (data.searchEngines && data.searchEngines.length > 0) {
+        searchEngines = data.searchEngines;
+      } else {
+        // Set default search engine if none exists
+        searchEngines = [defaultSearchEngine];
+        saveSearchEngines();
+      }
+    });
+  }
+
+  function saveSearchEngines() {
+    chrome.storage.sync.set({ searchEngines: searchEngines });
+  }
+
+  function addSearchEngine(name, icon, url) {
+    searchEngines.push({
+      name: name,
+      icon: icon,
+      url: url
+    });
+    saveSearchEngines();
+  }
+
+  function deleteSearchEngine(index) {
+    if (searchEngines.length > 1) {
+      searchEngines.splice(index, 1);
+      saveSearchEngines();
+    } else {
+      alert('You must have at least one search engine.');
+    }
+  }
+
+  function renderSearchEnginesList() {
+    searchEnginesList.innerHTML = '';
+    
+    searchEngines.forEach((engine, index) => {
+      const engineElement = document.createElement('div');
+      engineElement.className = 'search-engine-item';
+      
+      // Create engine info container
+      const infoDiv = document.createElement('div');
+      infoDiv.className = 'engine-info';
+      
+      // Create name container with icon
+      const nameContainer = document.createElement('div');
+      nameContainer.className = 'engine-name-container';
+      
+      // Create icon
+      const iconImg = document.createElement('img');
+      iconImg.className = 'tab-icon';
+      iconImg.src = engine.icon;
+      iconImg.onerror = () => { iconImg.src = 'default-icon.png'; }; // Fallback for failed icon loads
+      
+      // Create name 
+      const nameStrong = document.createElement('strong');
+      nameStrong.textContent = engine.name;
+      
+      // Add icon and name to container
+      nameContainer.appendChild(iconImg);
+      nameContainer.appendChild(nameStrong);
+      nameContainer.appendChild(document.createTextNode(':'));
+      
+      // Create URL on its own line
+      const urlSpan = document.createElement('span');
+      urlSpan.className = 'engine-url';
+      urlSpan.textContent = engine.url;
+      
+      // Append all elements to info div
+      infoDiv.appendChild(nameContainer);
+      infoDiv.appendChild(urlSpan);
+      
+      // Create delete button
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'delete-engine';
+      deleteButton.dataset.index = index;
+      
+      const closeIcon = document.createElement('span');
+      closeIcon.className = 'icon-close';
+      
+      deleteButton.appendChild(closeIcon);
+      deleteButton.addEventListener('click', () => {
+        deleteSearchEngine(index);
+        renderSearchEnginesList();
+      });
+      
+      engineElement.appendChild(infoDiv);
+      engineElement.appendChild(deleteButton);
+      searchEnginesList.appendChild(engineElement);
     });
   }
 });
