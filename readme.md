@@ -7,7 +7,8 @@ A Chrome/Edge extension that provides a spotlight-style tab switcher and web sea
 ## Features
 
 - 🔍 Quickly search and switch between open tabs
-- 🌐 Google search from the same interface
+- 🌐 Search the web with configurable search engines
+- ⚙️ Add and manage your favorite search engines
 - ⌨️ Keyboard navigation (arrow keys, enter, escape)
 - 🎨 Clean, dark interface inspired by Arc browser
 - ⚡ Fast and lightweight
@@ -31,8 +32,9 @@ A Chrome/Edge extension that provides a spotlight-style tab switcher and web sea
 1. Press `Cmd+Shift+Space` (Mac) or `Ctrl+Shift+Space` (Windows/Linux) to open Tab Spotlight
 2. Type to search through your open tabs
 3. Use arrow keys to navigate the results
-4. Press Enter to switch to the selected tab or perform a Google search
-5. Press Escape to close the popup
+4. Press Enter to switch to the selected tab or perform a web search
+5. Click the gear icon to add, edit, or remove search engines
+6. Press Escape to close the popup
 
 ### Changing the Keyboard Shortcut
 
